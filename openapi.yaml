@@ -1,0 +1,585 @@
+openapi: 3.0.3
+info:
+  title: GDGoC Bowen University — Mini E-Commerce API
+  description: >
+    Backend for a mini e-commerce platform: product catalog, cart, checkout,
+    and Paystack payment integration. See DESIGN.md in the repository root
+    for the full architecture rationale and the Core Engineering Scenario
+    breakdown (A–F).
+  version: 1.0.0
+  contact:
+    name: GDGoC Bowen University
+servers:
+  - url: http://localhost:4000
+    description: Local development
+tags:
+  - name: Auth
+  - name: Products
+  - name: Cart
+  - name: Orders
+  - name: Webhooks
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string, example: BAD_REQUEST }
+            message: { type: string }
+            details: {}
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [CUSTOMER, ADMIN] }
+        createdAt: { type: string, format: date-time }
+
+    AuthTokens:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        accessToken: { type: string }
+        refreshToken: { type: string }
+
+    Product:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        category: { type: string }
+        price: { type: number, format: float, description: Major currency unit (naira), e.g. 1500.00 }
+        stock: { type: integer }
+        inStock: { type: boolean }
+        isActive: { type: boolean }
+        imageUrl: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ProductListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Product' }
+        pagination:
+          type: object
+          properties:
+            page: { type: integer }
+            pageSize: { type: integer }
+            total: { type: integer }
+            totalPages: { type: integer }
+
+    CartItem:
+      type: object
+      properties:
+        productId: { type: string, format: uuid }
+        name: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: number }
+        priceAtAdd: { type: number }
+        priceChanged: { type: boolean }
+        lineTotal: { type: number }
+        availableStock: { type: integer }
+        isActive: { type: boolean }
+        issues:
+          type: array
+          items: { type: string, enum: [PRODUCT_UNAVAILABLE, INSUFFICIENT_STOCK, PRICE_CHANGED] }
+
+    Cart:
+      type: object
+      properties:
+        cartId: { type: string, format: uuid }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/CartItem' }
+        itemCount: { type: integer }
+        subtotal: { type: number }
+        readyForCheckout: { type: boolean }
+
+    OrderItem:
+      type: object
+      properties:
+        productId: { type: string, format: uuid }
+        name: { type: string }
+        unitPrice: { type: number }
+        quantity: { type: integer }
+        subtotal: { type: number }
+
+    Order:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [PENDING_PAYMENT, PAID, FAILED, EXPIRED, CANCELLED] }
+        reference: { type: string }
+        total: { type: number }
+        reservationExpiresAt: { type: string, format: date-time, nullable: true }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OrderItem' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CheckoutResponse:
+      type: object
+      properties:
+        order: { $ref: '#/components/schemas/Order' }
+        payment:
+          type: object
+          properties:
+            authorizationUrl: { type: string }
+            accessCode: { type: string }
+            reference: { type: string }
+
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200': { description: OK }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new customer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2 }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+      responses:
+        '201':
+          description: Registered
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '409':
+          description: Email already registered
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+        '400':
+          description: Validation error
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Log in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '401':
+          description: Invalid credentials
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Exchange a refresh token for a new token pair
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthTokens' }
+        '401': { description: Invalid/expired refresh token }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the current authenticated user
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { description: Missing/invalid token }
+
+  /products:
+    get:
+      tags: [Products]
+      summary: Browse/search/filter the product catalog
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: category
+          schema: { type: string }
+        - in: query
+          name: minPrice
+          schema: { type: number }
+        - in: query
+          name: maxPrice
+          schema: { type: number }
+        - in: query
+          name: inStock
+          schema: { type: string, enum: ['true', 'false'] }
+        - in: query
+          name: page
+          schema: { type: integer, default: 1 }
+        - in: query
+          name: pageSize
+          schema: { type: integer, default: 20, maximum: 100 }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [price, name, createdAt], default: createdAt }
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc], default: desc }
+      responses:
+        '200':
+          description: Paginated product list
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProductListResponse' }
+    post:
+      tags: [Products]
+      summary: Create a product (admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, description, category, priceNaira, stock]
+              properties:
+                name: { type: string }
+                description: { type: string }
+                category: { type: string }
+                priceNaira: { type: number }
+                stock: { type: integer }
+                isActive: { type: boolean }
+                imageUrl: { type: string }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '401': { description: Missing/invalid token }
+        '403': { description: Not an admin }
+
+  /products/categories:
+    get:
+      tags: [Products]
+      summary: List distinct product categories
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { type: string } }
+
+  /products/{id}:
+    get:
+      tags: [Products]
+      summary: Get a single product's details
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Product
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { description: Not found }
+    patch:
+      tags: [Products]
+      summary: Update a product (admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                description: { type: string }
+                category: { type: string }
+                priceNaira: { type: number }
+                stock: { type: integer }
+                isActive: { type: boolean }
+                imageUrl: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '403': { description: Not an admin }
+        '404': { description: Not found }
+    delete:
+      tags: [Products]
+      summary: Deactivate a product (admin only, soft delete)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Deactivated }
+        '403': { description: Not an admin }
+        '404': { description: Not found }
+
+  /cart:
+    get:
+      tags: [Cart]
+      summary: Get the current user's cart, with live price/stock flags
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+    delete:
+      tags: [Cart]
+      summary: Clear the entire cart
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Cleared cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+
+  /cart/items:
+    post:
+      tags: [Cart]
+      summary: Add an item to the cart (or increment quantity if already present)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [productId, quantity]
+              properties:
+                productId: { type: string, format: uuid }
+                quantity: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: Updated cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+        '409': { description: Requested quantity exceeds available stock }
+
+  /cart/items/{productId}:
+    patch:
+      tags: [Cart]
+      summary: Set an item's quantity
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity: { type: integer, minimum: 1 }
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+        '409': { description: Requested quantity exceeds available stock }
+    delete:
+      tags: [Cart]
+      summary: Remove an item from the cart
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: productId
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Updated cart
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Cart' }
+
+  /orders/checkout:
+    post:
+      tags: [Orders]
+      summary: Convert the current cart into an order and initialize payment
+      description: >
+        Atomically decrements stock for every cart line (Scenario A),
+        prices every line at the LIVE product price (Scenario B), creates
+        the order + stock reservations + clears the cart in one DB
+        transaction, then calls the payment gateway. If the gateway call
+        fails, the reservation is released and the cart is restored
+        (Scenario C).
+      security: [{ bearerAuth: [] }]
+      responses:
+        '201':
+          description: Order created, payment initialized
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CheckoutResponse' }
+        '400': { description: Cart is empty }
+        '409': { description: Insufficient stock for one or more items }
+        '422': { description: Payment gateway could not be reached; order rolled back }
+
+  /orders:
+    get:
+      tags: [Orders]
+      summary: List the current user's orders
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: '#/components/schemas/Order' } }
+
+  /orders/{id}:
+    get:
+      tags: [Orders]
+      summary: Get a single order (owner or admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '403': { description: Not your order }
+        '404': { description: Not found }
+
+  /orders/{id}/verify:
+    post:
+      tags: [Orders]
+      summary: Actively re-check payment status with the gateway
+      description: >
+        Reconciliation path for Scenario D (abandoned browser after
+        payment) — asks Paystack directly for the transaction's current
+        status and applies it, in case the webhook was delayed or lost.
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Order (possibly updated)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+
+  /orders/{id}/cancel:
+    post:
+      tags: [Orders]
+      summary: Cancel a pending (unpaid) order and release its reserved stock
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Cancelled order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '400': { description: Order is not in a cancellable state }
+
+  /webhooks/paystack:
+    post:
+      tags: [Webhooks]
+      summary: Paystack event webhook (charge.success, charge.failed, ...)
+      description: >
+        Verifies the `x-paystack-signature` HMAC-SHA512 header against the
+        RAW request body, then processes the event idempotently keyed by
+        (provider, eventId) — Scenario E. A byte-identical redelivery
+        returns `{ received: true, duplicate: true }` without reprocessing.
+      parameters:
+        - in: header
+          name: x-paystack-signature
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object }
+      responses:
+        '200': { description: Acknowledged (processed or duplicate no-op) }
+        '400': { description: Invalid signature or malformed payload }

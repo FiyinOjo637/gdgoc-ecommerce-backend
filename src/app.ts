@@ -36,10 +36,6 @@ export function createApp(): Express {
     }),
   );
 
-  // IMPORTANT: the webhook route needs the RAW request body to verify
-  // Paystack's HMAC signature, so it is mounted BEFORE the global JSON body
-  // parser and parses its own body with express.raw() internally
-  // (see webhook.routes.ts). Every other route below uses express.json().
   app.use('/webhooks', webhookRoutes);
 
   app.use(express.json({ limit: '1mb' }));
@@ -57,8 +53,6 @@ export function createApp(): Express {
     app.use('/docs', swaggerUi.serve, swaggerUi.setup(openapiDocument));
     app.get('/openapi.json', (_req, res) => res.json(openapiDocument));
   } catch {
-    // openapi.yaml missing in some minimal deployments — docs route simply
-    // won't be mounted rather than crashing the app.
   }
 
   app.use(notFoundHandler);

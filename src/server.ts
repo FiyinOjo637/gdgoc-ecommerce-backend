@@ -8,9 +8,9 @@ const app = createApp();
 const server = app.listen(env.PORT, () => {
   logger.info(`Server listening on port ${env.PORT} [${env.NODE_ENV}]`);
   // eslint-disable-next-line no-console
-  console.log(`🚀 GDGoC E-Commerce API running at http://localhost:${env.PORT}`);
+  console.log(` GDGoC ECommerce API running at http://localhost:${env.PORT}`);
   // eslint-disable-next-line no-console
-  console.log(`📖 API docs at http://localhost:${env.PORT}/docs`);
+  console.log(` You can check the API docs at http://localhost:${env.PORT}/docs`);
   startBackgroundJobs();
 });
 

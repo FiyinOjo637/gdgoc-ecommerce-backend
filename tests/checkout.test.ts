@@ -79,7 +79,7 @@ describe('Checkout / Orders', () => {
     const res = await request(app).post('/orders/checkout').set(authed(user.token));
     expect(res.status).toBe(422);
 
-    // Stock must be restored — no phantom deduction from a failed checkout.
+    // Stock must be restored - no phantom deduction from a failed checkout.
     const product = db.select().from(products).where(eq(products.id, productId)).get()!;
     expect(product.stock).toBe(10);
 

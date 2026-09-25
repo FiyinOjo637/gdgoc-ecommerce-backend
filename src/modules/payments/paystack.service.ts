@@ -82,7 +82,7 @@ export async function verifyTransaction(reference: string): Promise<VerifyResult
 /**
  * Verifies the `x-paystack-signature` header: HMAC-SHA512 of the raw request
  * body, keyed with the secret key. This MUST run against the raw request
- * bytes (see app.ts, which captures req.rawBody for this route only) —
+ * bytes (see app.ts, which captures req.rawBody for this route only) -
  * verifying against a re-serialized JSON object is a common bug that breaks
  * signature verification silently.
  */

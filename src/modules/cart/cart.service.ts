@@ -35,7 +35,7 @@ function fetchActiveProduct(productId: string) {
  * whose price has drifted since it was added, or whose quantity now exceeds
  * available stock, or that has been deactivated/removed from the catalog.
  * This is how Scenario B (dynamic price changes) and general "dynamic
- * catalog changes" are surfaced to the client before checkout — without
+ * catalog changes" are surfaced to the client before checkout - without
  * ever mutating the cart automatically out from under the user.
  */
 export function getCartView(userId: string) {
@@ -172,7 +172,7 @@ export function clearCart(userId: string) {
   return getCartView(userId);
 }
 
-/** Used internally by the checkout service — throws if the cart is empty. */
+/** Used internally by the checkout service - throws if the cart is empty. */
 export function requireNonEmptyCartRow(userId: string) {
   const cart = getOrCreateCart(userId);
   const rows = db.select().from(cartItems).where(eq(cartItems.cartId, cart.id)).all();

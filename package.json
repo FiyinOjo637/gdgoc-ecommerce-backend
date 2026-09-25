@@ -1,7 +1,7 @@
 {
   "name": "gdgoc-ecommerce-backend",
   "version": "1.0.0",
-  "description": "Mini E-Commerce Backend - GDGoC Bowen University Technical Lead Assessment",
+  "description": "Mini E Commerce Backend",
   "main": "dist/server.js",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only -r dotenv/config src/server.ts",
@@ -18,7 +18,7 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.7.7",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "better-sqlite3": "^11.3.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
@@ -30,6 +30,7 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "node-cron": "^3.0.3",
+    "source-map-support": "^0.5.21",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.1",
     "winston": "^3.14.2",

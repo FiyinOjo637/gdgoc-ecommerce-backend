@@ -13,7 +13,7 @@ const router = Router();
 /**
  * Webhook body must be parsed as raw bytes (NOT JSON) so the signature can
  * be computed over the exact bytes Paystack signed. `express.raw` is scoped
- * to only this route in app.ts — every other route keeps normal JSON
+ * to only this route in app.ts - every other route keeps normal JSON
  * parsing.
  */
 router.post(
@@ -51,7 +51,7 @@ router.post(
     // --- Scenario E: idempotency ---
     // The (provider, eventId) unique index is the source of truth: if this
     // exact event was already recorded, we acknowledge with 200 immediately
-    // and do NOT reprocess — this is what makes duplicate/retried webhook
+    // and do NOT reprocess - this is what makes duplicate/retried webhook
     // deliveries safe against double-charging, duplicate orders, or double
     // stock adjustments, even under concurrent delivery.
     const already = db
@@ -87,7 +87,7 @@ router.post(
 
     // Record the event AFTER processing so that if processing threw an
     // unexpected error before this point, Paystack's retry will find no
-    // record and safely retry — but successful/handled paths are now
+    // record and safely retry - but successful/handled paths are now
     // durably marked as processed.
     db.insert(paymentEvents)
       .values({

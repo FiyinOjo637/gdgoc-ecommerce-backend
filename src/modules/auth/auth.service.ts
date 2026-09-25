@@ -21,7 +21,7 @@ export async function register(input: RegisterInput) {
   const now = nowIso();
   const userId = newId();
 
-  // Public registration never grants ADMIN — that role is only assignable
+  // Public registration never grants ADMIN - that role is only assignable
   // via the seed script or by an existing admin (see users.routes RBAC).
   const role = 'CUSTOMER' as const;
 

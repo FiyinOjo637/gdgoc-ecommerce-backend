@@ -1,18 +1,6 @@
 import { sqliteTable, text, integer, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
 import { relations, sql } from 'drizzle-orm';
 
-/**
- * Data model for the mini e-commerce backend.
- *
- * Money is stored as INTEGER minor units ("kobo"/cents) everywhere, never as
- * a float, to avoid rounding errors in totals and to stay portable to a
- * DECIMAL column in Postgres later (see DESIGN.md "Database & portability").
- *
- * Timestamps are stored as ISO-8601 text, set explicitly by the application
- * (never relying on DB-side NOW()), so behaviour is identical under SQLite
- * and Postgres and trivially mockable in tests.
- */
-
 export const roleEnum = ['CUSTOMER', 'ADMIN'] as const;
 export type Role = (typeof roleEnum)[number];
 
@@ -55,9 +43,6 @@ export const products = sqliteTable(
     stock: integer('stock').notNull().default(0),
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     imageUrl: text('image_url'),
-    // Optimistic-concurrency guard, incremented on every update. Used as a
-    // defensive secondary check alongside the atomic conditional-update
-    // decrement described in DESIGN.md Scenario A.
     version: integer('version').notNull().default(0),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -89,9 +74,6 @@ export const cartItems = sqliteTable(
     cartId: text('cart_id').notNull(),
     productId: text('product_id').notNull(),
     quantity: integer('quantity').notNull(),
-    // Price snapshot from when the item was added/updated — used only to
-    // detect & flag "price changed since added" (Scenario B). Never used
-    // as the authoritative checkout price.
     priceAtAddKobo: integer('price_at_add_kobo').notNull(),
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
@@ -136,9 +118,6 @@ export const orderItems = sqliteTable(
   }),
 );
 
-// One row per (order, product) reservation of stock, with a TTL. This is
-// what lets us answer Scenario F ("temporary lock reservation" vs. naive
-// permanent immediate deduction) and Scenario C (release-on-failure).
 export const stockReservations = sqliteTable(
   'stock_reservations',
   {
@@ -156,9 +135,6 @@ export const stockReservations = sqliteTable(
   }),
 );
 
-// Every inbound webhook / verify-poll result is written here BEFORE being
-// acted on, keyed uniquely by (provider, eventId), so re-delivered webhooks
-// become idempotent no-ops (Scenario E).
 export const paymentEvents = sqliteTable(
   'payment_events',
   {
@@ -220,5 +196,4 @@ export const productsRelations = relations(products, ({ many }) => ({
   reservations: many(stockReservations),
 }));
 
-// silence unused-import lint for `sql` (kept available for future raw defaults)
 export const _sqlRef = sql`1`;

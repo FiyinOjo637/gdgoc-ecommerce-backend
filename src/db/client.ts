@@ -10,7 +10,7 @@ const resolvedPath = path.isAbsolute(dbFile) ? dbFile : path.join(process.cwd(),
 export const sqlite = new Database(resolvedPath);
 
 // WAL mode + a busy timeout let multiple connections/transactions interleave
-// safely instead of failing immediately on "database is locked" — this is
+// safely instead of failing immediately on "database is locked" - this is
 // what stands in for Postgres row-level locking in the SQLite dev setup.
 // See DESIGN.md Scenario A for how correctness is still guaranteed even
 // without SELECT ... FOR UPDATE.

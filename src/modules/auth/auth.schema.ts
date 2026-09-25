@@ -6,7 +6,7 @@ export const registerSchema = z.object({
   password: z.string().min(8).max(72),
   // Only present so an admin bootstrap script can create admins; public
   // registration ignores this unless ALLOW_SELF_SIGNUP_ADMIN is enabled
-  // (see auth.service.ts) — default deployments always create CUSTOMER.
+  // (see auth.service.ts) - default deployments always create CUSTOMER.
   role: z.enum(['CUSTOMER', 'ADMIN']).optional(),
 });
 

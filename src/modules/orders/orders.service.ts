@@ -37,7 +37,7 @@ interface CheckoutResult {
  * Runs the fully-atomic part of checkout: for every cart line, atomically
  * decrement product stock with a conditional UPDATE (`WHERE stock >= qty`)
  * so two concurrent checkouts can never both succeed against the same last
- * unit (Scenario A) — this is safe under Postgres with multiple app
+ * unit (Scenario A) - this is safe under Postgres with multiple app
  * instances too, unlike relying on an app-level mutex. Uses the LIVE
  * product price, never the cart's priceAtAdd snapshot (Scenario B). All
  * writes (stock decrement, order, order items, reservations, cart clear)
@@ -71,7 +71,7 @@ function runAtomicCheckoutTransaction(userId: string, email: string): typeof ord
       // This single UPDATE is the entire concurrency-safety mechanism: the
       // WHERE clause re-checks stock >= quantity at the moment of the write,
       // inside SQLite's transaction lock, so if two requests race for the
-      // last unit, only one UPDATE affects a row — the other affects zero
+      // last unit, only one UPDATE affects a row - the other affects zero
       // rows and we abort that whole transaction.
       const updateResult = tx
         .update(products)
@@ -81,7 +81,7 @@ function runAtomicCheckoutTransaction(userId: string, email: string): typeof ord
 
       if (updateResult.changes === 0) {
         throw new ConflictError(
-          `Insufficient stock for "${product.name}" — someone may have just purchased it`,
+          `Insufficient stock for "${product.name}" - someone may have just purchased it`,
           { productId: product.id },
         );
       }
@@ -130,7 +130,7 @@ function runAtomicCheckoutTransaction(userId: string, email: string): typeof ord
 
     // Cart is cleared as part of the SAME transaction that reserved the
     // stock, so a crash between "decrement stock" and "clear cart" is
-    // impossible — either both happened or neither did.
+    // impossible - either both happened or neither did.
     tx.delete(cartItems).where(eq(cartItems.cartId, cart.id)).run();
 
     return tx.select().from(orders).where(eq(orders.id, orderId)).get()!;
@@ -160,7 +160,7 @@ export async function checkout(userId: string, email: string): Promise<CheckoutR
     // The DB transaction above already committed (order + reservation +
     // cart clear). Since we can't roll that back after the fact, we
     // explicitly release the reservation and restore stock, then mark the
-    // order FAILED, in a second transaction — leaving the system
+    // order FAILED, in a second transaction - leaving the system
     // consistent even though the two steps aren't one atomic unit.
     logger.error('Payment initialization failed after order creation; compensating', {
       orderId: order.id,
@@ -226,7 +226,7 @@ export function applySuccessfulPayment(orderId: string) {
   if (order.status === 'PAID') return serializeOrderFull(order.id);
   if (order.status !== 'PENDING_PAYMENT') {
     // Order already terminally FAILED/EXPIRED/CANCELLED but a late payment
-    // came in — flag loudly for manual reconciliation rather than silently
+    // came in - flag loudly for manual reconciliation rather than silently
     // re-committing stock that was already given back to the pool.
     logger.error('Payment succeeded for a non-pending order', { orderId, status: order.status });
     throw new ConflictError(`Order ${orderId} is ${order.status}, cannot mark PAID`);
@@ -244,8 +244,8 @@ export function applyFailedPayment(orderId: string) {
 }
 
 /**
- * Background job target (Scenario F): releases reservations — and restores
- * stock — for any order still PENDING_PAYMENT past its reservation TTL.
+ * Background job target (Scenario F): releases reservations - and restores
+ * stock - for any order still PENDING_PAYMENT past its reservation TTL.
  * Returns the number of orders expired, for logging/metrics.
  */
 export function expireOverdueReservations(): number {
@@ -292,7 +292,7 @@ export function getOrderByReference(reference: string) {
 /**
  * Manual/poll reconciliation path (Scenario D): asks the gateway directly
  * for the transaction status, for cases where the browser was abandoned
- * and no webhook has (yet) arrived. Safe to call repeatedly — idempotent
+ * and no webhook has (yet) arrived. Safe to call repeatedly - idempotent
  * via the same PENDING_PAYMENT-only guards as the webhook path.
  */
 export async function verifyOrderWithGateway(userId: string, orderId: string, isAdmin: boolean) {

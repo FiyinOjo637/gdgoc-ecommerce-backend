@@ -4,7 +4,6 @@ import { UnauthorizedError, ForbiddenError } from '../utils/errors';
 import { Role } from '../db/schema';
 
 declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       user?: { id: string; role: Role; email: string };
@@ -12,13 +11,6 @@ declare global {
   }
 }
 
-/**
- * Verifies the bearer access token and attaches `req.user`. Multi-tenant
- * boundary enforcement (no IDOR on carts/orders) happens at the resource
- * layer by always scoping queries with `WHERE userId = req.user.id`
- * (see modules/cart and modules/orders), never by trusting a client-supplied
- * user/cart/order id alone.
- */
 export function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {
@@ -46,8 +38,7 @@ export function requireRole(...roles: Role[]) {
     return next();
   };
 }
-
-/** Optional auth: attaches req.user if a valid token is present, else continues anonymously. */
+ */
 export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) return next();
@@ -57,7 +48,7 @@ export function optionalAuth(req: Request, _res: Response, next: NextFunction) {
       req.user = { id: payload.sub, role: payload.role, email: payload.email };
     }
   } catch {
-    // ignore invalid token in optional context
+    // ejust to ignore invalid token in optional context
   }
   return next();
 }

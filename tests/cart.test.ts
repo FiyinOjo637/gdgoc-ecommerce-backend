@@ -92,7 +92,7 @@ describe('Cart', () => {
     const bCart = await request(app).get('/cart').set(authed(userB.token));
     expect(bCart.body.items).toEqual([]); // B's own cart, not A's
 
-    // There is no cart-id-based route at all — every cart route resolves
+    // There is no cart-id-based route at all - every cart route resolves
     // "the cart" from the bearer token's user id, so there is no request
     // B could craft to reach A's cart.
   });

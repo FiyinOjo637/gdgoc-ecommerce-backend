@@ -1,10 +1,10 @@
 openapi: 3.0.3
 info:
-  title: GDGoC Bowen University — Mini E-Commerce API
+  title: GDGoC Bowen University - Mini E-Commerce API
   description: >
     Backend for a mini e-commerce platform: product catalog, cart, checkout,
-    and Paystack payment integration. See DESIGN.md in the repository root
-    for the full architecture rationale and the Core Engineering Scenario
+    and Paystack payment integration. you can see DESIGN.md in the repository root
+    for the full architecture and the Core Engineering Scenario
     breakdown (A–F).
   version: 1.0.0
   contact:
@@ -528,7 +528,7 @@ paths:
       summary: Actively re-check payment status with the gateway
       description: >
         Reconciliation path for Scenario D (abandoned browser after
-        payment) — asks Paystack directly for the transaction's current
+        payment) - asks Paystack directly for the transaction's current
         status and applies it, in case the webhook was delayed or lost.
       security: [{ bearerAuth: [] }]
       parameters:
@@ -568,7 +568,7 @@ paths:
       description: >
         Verifies the `x-paystack-signature` HMAC-SHA512 header against the
         RAW request body, then processes the event idempotently keyed by
-        (provider, eventId) — Scenario E. A byte-identical redelivery
+        (provider, eventId) - Scenario E. A byte-identical redelivery
         returns `{ received: true, duplicate: true }` without reprocessing.
       parameters:
         - in: header

@@ -1,23 +1,3 @@
-/**
- * CANDIDATE-DEFINED EDGE CASE TESTS
- * =================================
- * These three tests were specifically designed to probe the hardest
- * correctness properties called out in the assessment's Core Engineering
- * Scenarios (DESIGN.md has the full write-up for each).
- *
- *   1. Concurrent stock purchase (Scenario A) — two customers race for the
- *      last unit of stock; the system must sell it to exactly one of them,
- *      never both, and never neither.
- *   2. Duplicate webhook idempotency (Scenario E) — the same Paystack
- *      webhook event delivered twice (as real webhook providers do on
- *      retry) must not double-process the payment, double-commit the
- *      stock reservation, or create a second side effect of any kind.
- *   3. Expired reservation releases stock automatically (Scenario F) — an
- *      order that never gets paid must not hold stock hostage forever;
- *      the background sweep must reclaim it once the TTL passes, and a
- *      late/duplicate payment for that same reference must not resurrect
- *      the expired order.
- */
 import { app, request, createUser, createProduct, authed } from './helpers';
 import * as paystack from '../src/modules/payments/paystack.service';
 import { db } from '../src/db/client';
@@ -42,7 +22,7 @@ function signPayload(payload: object): { raw: string; signature: string } {
   return { raw, signature };
 }
 
-describe('EDGE CASE 1 — Concurrent stock purchase (Scenario A)', () => {
+describe('EDGE CASE 1 - Concurrent stock purchase (Scenario A)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('never oversells the last unit when two customers checkout at the same time', async () => {
@@ -67,7 +47,7 @@ describe('EDGE CASE 1 — Concurrent stock purchase (Scenario A)', () => {
 
     const statuses = [resA.status, resB.status].sort();
     // Exactly one succeeds (201), exactly one is rejected for insufficient
-    // stock (409) — never both succeeding, never both failing.
+    // stock (409) - never both succeeding, never both failing.
     expect(statuses).toEqual([201, 409]);
 
     const product = db.select().from(products).where(eq(products.id, productId)).get()!;
@@ -101,7 +81,7 @@ describe('EDGE CASE 1 — Concurrent stock purchase (Scenario A)', () => {
   });
 });
 
-describe('EDGE CASE 2 — Duplicate webhook idempotency (Scenario E)', () => {
+describe('EDGE CASE 2 - Duplicate webhook idempotency (Scenario E)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('processes a charge.success webhook once, and a byte-identical redelivery is a safe no-op', async () => {
@@ -137,7 +117,7 @@ describe('EDGE CASE 2 — Duplicate webhook idempotency (Scenario E)', () => {
     expect(order.status).toBe('PAID');
 
     // Second, IDENTICAL delivery (webhook providers retry on any non-2xx,
-    // network blip, or timeout — this must be a no-op, not a second charge
+    // network blip, or timeout - this must be a no-op, not a second charge
     // application or a crash).
     const second = await request(app)
       .post('/webhooks/paystack')
@@ -151,7 +131,7 @@ describe('EDGE CASE 2 — Duplicate webhook idempotency (Scenario E)', () => {
     expect(order.status).toBe('PAID'); // unchanged, not double-processed
 
     // Stock was decremented exactly once at checkout time, and committing
-    // a reservation doesn't touch stock again — confirm no double debit.
+    // a reservation doesn't touch stock again - confirm no double debit.
     const product = db.select().from(products).where(eq(products.id, productId)).get()!;
     expect(product.stock).toBe(2); // 3 - 1, not 3 - 2
   });
@@ -171,7 +151,7 @@ describe('EDGE CASE 2 — Duplicate webhook idempotency (Scenario E)', () => {
   });
 });
 
-describe('EDGE CASE 3 — Expired stock reservations are reclaimed (Scenario F)', () => {
+describe('EDGE CASE 3 - Expired stock reservations are reclaimed (Scenario F)', () => {
   beforeEach(() => jest.clearAllMocks());
 
   it('releases stock for an order whose reservation TTL has passed, and a late payment cannot resurrect it', async () => {
@@ -192,7 +172,7 @@ describe('EDGE CASE 3 — Expired stock reservations are reclaimed (Scenario F)'
     expect(product.stock).toBe(3); // 5 - 2 reserved
 
     // Simulate the reservation TTL having already passed (instead of
-    // waiting real minutes, we backdate reservationExpiresAt directly —
+    // waiting real minutes, we backdate reservationExpiresAt directly -
     // the sweep logic itself is exercised unmodified).
     db.update(orders)
       .set({ reservationExpiresAt: new Date(Date.now() - 60_000).toISOString() })
@@ -211,7 +191,7 @@ describe('EDGE CASE 3 — Expired stock reservations are reclaimed (Scenario F)'
     // A payment that arrives AFTER expiry (e.g. customer completed payment
     // on a stale checkout tab right as the TTL lapsed) must not silently
     // flip the order back to PAID and re-commit a reservation that no
-    // longer reflects real inventory — it must be flagged, not applied.
+    // longer reflects real inventory - it must be flagged, not applied.
     const webhookPayload = {
       event: 'charge.success',
       data: { reference, id: 42424, status: 'success', amount: 200000 },

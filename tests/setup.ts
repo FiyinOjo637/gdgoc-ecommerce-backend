@@ -1,11 +1,6 @@
 import dotenv from 'dotenv';
 import path from 'path';
 
-// Load .env.test EXPLICITLY (not the default `.env`), regardless of how
-// this test run was invoked. This is the single source of truth for test
-// DB isolation — it does not depend on the npm script wrapping it with any
-// particular env-loading flag, so `npx jest` run directly also does the
-// right thing.
 dotenv.config({ path: path.resolve(__dirname, '../.env.test'), override: true });
 
 import { sqlite } from '../src/db/client';

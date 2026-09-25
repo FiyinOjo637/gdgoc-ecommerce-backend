@@ -2,8 +2,8 @@ import type { Config } from 'drizzle-kit';
 import 'dotenv/config';
 
 // Points drizzle-kit at the SQLite schema for migration generation.
-// Swapping to Postgres in production only requires changing the schema
-// file's column helpers (see DESIGN.md "Database & portability") and this
+// Swapping to Postgres in production will only requires changing the schema
+// file's column helpers (you can checek Design.md i also talked about it there )) and this
 // config's `dialect`.
 export default {
   schema: './src/db/schema.ts',

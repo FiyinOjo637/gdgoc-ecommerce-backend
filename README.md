@@ -122,6 +122,13 @@ descriptions. Summary:
 | `RECONCILIATION_POLL_INTERVAL_MS` | How often the background reservation-expiry + payment-reconciliation jobs run (Scenario D/F). |
 | `ADMIN_SEED_EMAIL` / `ADMIN_SEED_PASSWORD` | Credentials for the seeded admin account. |
 
+> **Note on `.env.test`**: unlike `.env`, `.env.test` **is committed** to
+> the repo. It contains only dummy, non-secret values (a fake JWT secret,
+> a placeholder Paystack key) and exists so `npm test` works immediately
+> on a fresh clone with zero manual setup — this is what the assessment's
+> "single test command" requirement is asking for. Do **not** put real
+> secrets in it.
+
 ---
 
 ## 4. Project Structure
